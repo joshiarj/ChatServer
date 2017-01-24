@@ -29,6 +29,8 @@ public class Program {
                 
                 ClientListener listener = new ClientListener(socket, handler);
                 listener.start();
+                SaveToLogFile save = new SaveToLogFile();
+                save.saveToFile();
             }
         } catch (IOException ioe) {
             System.out.println(ioe.getMessage());

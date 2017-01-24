@@ -13,6 +13,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.net.Socket;
+import java.text.DateFormat;
+import java.text.FieldPosition;
+import java.text.ParsePosition;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  *
@@ -26,6 +31,8 @@ public class ClientListener extends Thread {
     private ClientHandler handler;
     private BufferedReader reader;
     private UserDAO userDAO = new UserDAOImpl();
+    private DateFormat dateformat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    private Date date = new Date();
 
     public ClientListener(Socket socket, ClientHandler handler) throws IOException {
         this.socket = socket;
@@ -39,33 +46,7 @@ public class ClientListener extends Thread {
         try {
             login();
             while (!isInterrupted()) {
-                ps.print("> ");
-                String line = reader.readLine();
-                String[] tokens = line.split("::");
-                if (tokens.length == 1) {
-                    if(tokens[0].equalsIgnoreCase("list")) {
-                        ps.println(handler.getAll());
-                    } else if(tokens[0].equalsIgnoreCase("exit")) {
-                        ps.println("Exiting from chatserver...");
-                        break;
-                    }
-                    String msg = client.getUserName() + " says >> " + tokens[tokens.length - 1];
-                    broadcastMessage(client, msg);
-                } else {
-                    String command = tokens[0];
-                    String receiver = tokens[1];
-                    if (command.equalsIgnoreCase("pm")) {
-                        if (tokens.length > 2) {
-                            String pm = client.getUserName() + " has PM'd you >> " + tokens[tokens.length - 1];
-                            privateMessage(handler.getByUserName(receiver), pm);
-                            //broadcastMessage(client.getUserName().equalsIgnoreCase(tokens[1]), msg);
-                        }
-                    } 
-                    else {
-                        ps.println("Invalid command.");
-                        break;
-                    }
-                }
+                chatStart();
             }
         } catch (IOException ioe) {
             System.out.println(ioe.getMessage());
@@ -86,23 +67,70 @@ public class ClientListener extends Thread {
                 ps.println("You have successfully logged in.");
                 client = new Client(name, socket);
                 handler.addClient(client);
+                broadcastLoginMessage(client.getUserName());
                 return true;
             }
         }
     }
 
-    private void broadcastMessage(Client client, String message) throws IOException {
+    public void broadcastMessage(Client client, String message) throws IOException {
         for (Client c : handler.getAll()) {
             if (!c.equals(client)) {
+
                 PrintStream out = new PrintStream(c.getSocket().getOutputStream());
                 out.println(message);
+
             }
         }
     }
 
-    private void privateMessage(Client receiver, String pm) throws IOException {
+    public void privateMessage(Client receiver, String pm) throws IOException {
         PrintStream out = new PrintStream(receiver.getSocket().getOutputStream());
         out.println(pm);
+    }
+
+    public void broadcastLoginMessage(String userName) throws IOException {
+        for (Client c : handler.getAll()) {
+            //if (!c.equals(client)) {
+
+            PrintStream out = new PrintStream(c.getSocket().getOutputStream());
+            out.println(userName + "(IP: " + handler.getByUserName(userName).getSocket().getInetAddress().getHostAddress() + ")"
+                    + " has logged in at: " + dateformat.format(date));
+
+            //}
+        }
+    }
+
+    public void chatStart() throws IOException {
+        ps.print("> ");
+        String line = reader.readLine();
+        String[] tokens = line.split("::");
+        if (tokens.length == 1) {
+            if (tokens[0].equalsIgnoreCase("list")) {
+                ps.println(handler.getAll());
+            } 
+            else if (tokens[0].equalsIgnoreCase("exit")) {
+                ps.println("Exiting from chatserver...");
+                socket.close();
+            }
+            String msg = dateformat.format(date) + ": " + client.getUserName()
+                    + " says >> " + tokens[tokens.length - 1];
+            broadcastMessage(client, msg);
+        } else {
+            String command = tokens[0];
+            String receiver = tokens[1];
+            if (command.equalsIgnoreCase("pm")) {
+                if (tokens.length > 2) {
+                    String pm = dateformat.format(date) + ": " + client.getUserName()
+                            + " has PM'd you >> " + tokens[tokens.length - 1];
+                    privateMessage(handler.getByUserName(receiver), pm);
+                    //broadcastMessage(client.getUserName().equalsIgnoreCase(tokens[1]), msg);
+                }
+            } else {
+                ps.println("Invalid command.");
+//                break;
+            }
+        }
     }
 
 }
