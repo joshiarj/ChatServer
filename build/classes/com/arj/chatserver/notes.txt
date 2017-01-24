@@ -1,0 +1,6 @@
+Create chatlog (ChatServer_date.log)
+only public messages
+ip address + date + message (login/logout details)
+
+individual folders for pm to each user:
+    -- eg. PMs\Ram\Sita_date.log
